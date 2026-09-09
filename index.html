@@ -860,7 +860,7 @@ footer .footer-quote {
 <body>
 
 <!-- Navigation -->
-<nav style="box-shadow: none;">
+<nav style="box-shadow: rgba(0, 0, 0, 0.06) 0px 2px 20px;">
     <div class="nav-inner">
         <div class="logo">Chelsie Zhang</div>
         <ul class="nav-links">
@@ -1256,6 +1256,563 @@ window.addEventListener('scroll', () => {
 });
 </script>
 
+<!-- ==================== 可视化编辑器 ==================== -->
+<style id="edit-styles">
+/* 编辑工具栏 */
+#edit-toolbar {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+    font-family: 'Noto Sans SC', sans-serif;
+}
+#edit-toolbar .tb-btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 30px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 500;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+#edit-toolbar .tb-toggle {
+    background: #2A2520;
+    color: #fff;
+}
+#edit-toolbar .tb-toggle.active {
+    background: #A67C52;
+}
+#edit-toolbar .tb-panel {
+    display: none;
+    background: #FDFAF5;
+    border: 1px solid #D9CFC0;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    width: 280px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+#edit-toolbar .tb-panel.show {
+    display: block;
+}
+#edit-toolbar .tb-panel h4 {
+    font-size: 13px;
+    color: #2A2520;
+    margin-bottom: 10px;
+    font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #D9CFC0;
+}
+#edit-toolbar .tb-panel h4:not(:first-child) {
+    margin-top: 18px;
+}
+#edit-toolbar .color-presets {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+#edit-toolbar .color-preset {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+#edit-toolbar .color-preset:hover {
+    transform: scale(1.1);
+}
+#edit-toolbar .color-preset.active {
+    border-color: #2A2520;
+}
+#edit-toolbar .section-toggles label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #5C544A;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+#edit-toolbar .tb-export {
+    background: #A67C52;
+    color: #fff;
+}
+#edit-toolbar .tb-export:hover {
+    background: #8B6539;
+}
+#edit-toolbar .tb-hint {
+    font-size: 11px;
+    color: #8A7F70;
+    line-height: 1.6;
+    margin-top: 8px;
+}
 
+/* 编辑模式样式 */
+body.edit-mode [contenteditable="true"] {
+    outline: 2px dashed rgba(166, 124, 82, 0.5);
+    outline-offset: 4px;
+    cursor: text;
+    border-radius: 2px;
+    transition: outline-color 0.2s;
+}
+body.edit-mode [contenteditable="true"]:focus {
+    outline-color: #A67C52;
+    background: rgba(166, 124, 82, 0.05);
+}
+body.edit-mode [contenteditable="true"]:hover {
+    outline-color: #A67C52;
+}
+body.edit-mode section {
+    position: relative;
+}
+body.edit-mode .section-toggle-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    padding: 4px 12px;
+    font-size: 12px;
+    background: rgba(166, 124, 82, 0.15);
+    border: 1px solid rgba(166, 124, 82, 0.3);
+    border-radius: 12px;
+    color: #A67C52;
+    cursor: pointer;
+    display: inline-block;
+}
+body:not(.edit-mode) .section-toggle-btn {
+    display: none;
+}
+body.edit-mode .item-controls {
+    display: flex !important;
+    gap: 6px;
+    margin-top: 12px;
+}
+body:not(.edit-mode) .item-controls {
+    display: none !important;
+}
+.item-controls {
+    display: none;
+}
+.item-controls button {
+    padding: 4px 10px;
+    font-size: 12px;
+    border: 1px solid #D9CFC0;
+    background: #FDFAF5;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #5C544A;
+    transition: all 0.2s;
+}
+.item-controls button:hover {
+    background: #A67C52;
+    color: #fff;
+    border-color: #A67C52;
+}
+body.edit-mode .add-item-btn {
+    display: inline-block !important;
+    margin: 16px auto;
+    padding: 10px 24px;
+    font-size: 13px;
+    border: 2px dashed #C9A876;
+    background: transparent;
+    border-radius: 30px;
+    color: #A67C52;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+body:not(.edit-mode) .add-item-btn {
+    display: none !important;
+}
+.add-item-btn:hover {
+    background: #A67C52;
+    color: #fff;
+    border-style: solid;
+}
+body.edit-mode .section-hidden {
+    opacity: 0.3;
+}
+</style>
 
-</body></html>
+<!-- 编辑工具栏 -->
+<div id="edit-toolbar">
+    <button class="tb-btn tb-toggle" id="tb-toggle-btn" onclick="toggleEditMode()">编辑模式</button>
+    <div class="tb-panel" id="tb-panel">
+        <h4>主题配色</h4>
+        <div class="color-presets" id="color-presets"></div>
+
+        <h4>板块显示</h4>
+        <div class="section-toggles" id="section-toggles"></div>
+
+        <h4>操作</h4>
+        <button class="tb-btn tb-export" style="width:100%;" onclick="exportHTML()">导出 HTML 文件</button>
+        <p class="tb-hint">
+            1. 点击文字直接编辑内容<br>
+            2. 用板块按钮显示/隐藏板块<br>
+            3. 卡片可排序/删除/新增<br>
+            4. 导出后替换 index.html，运行 ./deploy.sh
+        </p>
+    </div>
+</div>
+
+<script id="edit-script">
+// ============ 可视化编辑器 ============
+let editMode = false;
+
+// 可编辑元素的选择器
+const EDITABLE_SELECTORS = [
+    '.hero-subtitle-top', '.hero-title', '.en-name', '.hero-tagline',
+    '.hero-quote', '.hero-meta span',
+    '.section-label', '.section-title',
+    '.about-content p', '.about-stat .num', '.about-stat .label',
+    '.about-tags .tag',
+    '.career-role', '.career-company', '.career-date', '.career-loc',
+    '.career-desc', '.career-highlights li', '.career-skills span',
+    '.project-year', '.project-title', '.project-desc', '.project-badge',
+    '.edu-icon', '.edu-school', '.edu-major', '.edu-degree', '.edu-date',
+    '.contact-icon', '.contact-label', '.contact-value', '.contact-tagline',
+    '.footer-quote', 'footer p:last-child', '.logo'
+];
+
+// 主题配色预设
+const COLOR_PRESETS = [
+    { name: '暖棕', bg: '#F7F3ED', warm: '#EFE8DD', dark: '#2A2520', mid: '#5C544A', light: '#8A7F70', accent: '#A67C52', accentL: '#C9A876', line: '#D9CFC0' },
+    { name: '墨绿', bg: '#F2F5F0', warm: '#E8EFE5', dark: '#1A2B1E', mid: '#4A5C4E', light: '#7A8F7E', accent: '#5B8C5A', accentL: '#8BB88A', line: '#C5D4BE' },
+    { name: '藏青', bg: '#F0F2F8', warm: '#E6E9F2', dark: '#1A2332', mid: '#3D4D63', light: '#6B7A8F', accent: '#4A6FA5', accentL: '#7AA0D5', line: '#C8D0DE' },
+    { name: '暗红', bg: '#F8F0F0', warm: '#F0E5E5', dark: '#2E1A1A', mid: '#5C3D3D', light: '#8A6868', accent: '#A04040', accentL: '#CC7878', line: '#D8C4C4' },
+    { name: '深灰', bg: '#F5F5F3', warm: '#EAEAE6', dark: '#222222', mid: '#555555', light: '#888888', accent: '#555555', accentL: '#999999', line: '#DDDDDD' },
+    { name: '紫调', bg: '#F5F2F8', warm: '#EBE5F0', dark: '#2A2235', mid: '#5C506A', light: '#8A7F95', accent: '#7B5EA7', accentL: '#A88FD0', line: '#D0C8DE' }
+];
+
+// 初始化
+function initEditor() {
+    // 构建颜色预设
+    const presetsContainer = document.getElementById('color-presets');
+    COLOR_PRESETS.forEach((preset, i) => {
+        const el = document.createElement('div');
+        el.className = 'color-preset' + (i === 0 ? ' active' : '');
+        el.style.background = preset.accent;
+        el.title = preset.name;
+        el.onclick = () => applyTheme(i);
+        presetsContainer.appendChild(el);
+    });
+
+    // 构建板块开关
+    const togglesContainer = document.getElementById('section-toggles');
+    const sections = document.querySelectorAll('section[id], footer');
+    sections.forEach(sec => {
+        const id = sec.id || 'footer';
+        const title = sec.querySelector('.section-title')?.textContent || sec.querySelector('footer')?.textContent?.trim()?.substring(0, 10) || id;
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.dataset.sectionId = id;
+        cb.onchange = () => toggleSection(id, cb.checked);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(getSectionLabel(id)));
+        togglesContainer.appendChild(label);
+    });
+
+    // 给可重复项加控件
+    addRepeatableControls();
+}
+
+function getSectionLabel(id) {
+    const map = {
+        'home': 'Hero 首屏',
+        'about': '关于我',
+        'career': '职业履历',
+        'projects': '代表项目',
+        'education': '教育背景',
+        'contact': '联系方式',
+        'footer': '页脚'
+    };
+    return map[id] || id;
+}
+
+function toggleEditMode() {
+    editMode = !editMode;
+    document.body.classList.toggle('edit-mode', editMode);
+
+    const btn = document.getElementById('tb-toggle-btn');
+    const panel = document.getElementById('tb-panel');
+
+    if (editMode) {
+        btn.classList.add('active');
+        btn.textContent = '退出编辑';
+        panel.classList.add('show');
+        // 启用 contenteditable
+        EDITABLE_SELECTORS.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                el.contentEditable = 'true';
+            });
+        });
+        // 给每个 section 加显示/隐藏按钮
+        document.querySelectorAll('section[id]').forEach(sec => {
+            if (!sec.querySelector('.section-toggle-btn')) {
+                const btn = document.createElement('button');
+                btn.className = 'section-toggle-btn';
+                btn.textContent = '隐藏此板块';
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    sec.classList.toggle('section-hidden');
+                    btn.textContent = sec.classList.contains('section-hidden') ? '显示此板块' : '隐藏此板块';
+                };
+                sec.appendChild(btn);
+            }
+        });
+    } else {
+        btn.classList.remove('active');
+        btn.textContent = '编辑模式';
+        panel.classList.remove('show');
+        EDITABLE_SELECTORS.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                el.contentEditable = 'false';
+            });
+        });
+    }
+}
+
+function applyTheme(index) {
+    const p = COLOR_PRESETS[index];
+    const root = document.documentElement;
+    root.style.setProperty('--bg-cream', p.bg);
+    root.style.setProperty('--bg-warm', p.warm);
+    root.style.setProperty('--bg-card', p.bg);
+    root.style.setProperty('--text-dark', p.dark);
+    root.style.setProperty('--text-mid', p.mid);
+    root.style.setProperty('--text-light', p.light);
+    root.style.setProperty('--accent', p.accent);
+    root.style.setProperty('--accent-light', p.accentL);
+    root.style.setProperty('--line', p.line);
+
+    // 更新预设选中状态
+    document.querySelectorAll('.color-preset').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+    });
+}
+
+function toggleSection(id, show) {
+    const el = id === 'footer' ? document.querySelector('footer') : document.getElementById(id);
+    if (el) {
+        el.style.display = show ? '' : 'none';
+    }
+}
+
+// 给可重复项加排序/删除/新增控件
+function addRepeatableControls() {
+    const configs = [
+        { container: '.career-timeline', item: '.career-item', addFn: addCareerItem },
+        { container: '.projects-grid', item: '.project-card', addFn: addProjectCard },
+        { container: '.edu-list', item: '.edu-card', addFn: addEduCard },
+        { container: '.contact-cards', item: '.contact-card', addFn: addContactCard },
+        { container: '.about-stats', item: '.about-stat', addFn: addAboutStat }
+    ];
+
+    configs.forEach(cfg => {
+        const container = document.querySelector(cfg.container);
+        if (!container) return;
+
+        // 给每个已有项加控件
+        container.querySelectorAll(cfg.item).forEach(item => {
+            if (item.querySelector('.item-controls')) return;
+            addControlsToItem(item, cfg);
+        });
+
+        // 加"新增"按钮
+        if (!container.querySelector('.add-item-btn')) {
+            const addBtn = document.createElement('button');
+            addBtn.className = 'add-item-btn';
+            addBtn.textContent = '+ 新增';
+            addBtn.onclick = () => cfg.addFn(container);
+            container.appendChild(addBtn);
+        }
+    });
+}
+
+function addControlsToItem(item, cfg) {
+    const controls = document.createElement('div');
+    controls.className = 'item-controls';
+
+    const upBtn = document.createElement('button');
+    upBtn.innerHTML = '↑';
+    upBtn.title = '上移';
+    upBtn.onclick = (e) => {
+        e.stopPropagation();
+        const prev = item.previousElementSibling;
+        if (prev && prev.matches(cfg.item)) {
+            item.parentNode.insertBefore(item, prev);
+        }
+    };
+
+    const downBtn = document.createElement('button');
+    downBtn.innerHTML = '↓';
+    downBtn.title = '下移';
+    downBtn.onclick = (e) => {
+        e.stopPropagation();
+        const next = item.nextElementSibling;
+        if (next && next.matches(cfg.item)) {
+            item.parentNode.insertBefore(next, item);
+        }
+    };
+
+    const delBtn = document.createElement('button');
+    delBtn.innerHTML = '✕';
+    delBtn.title = '删除';
+    delBtn.style.color = '#A04040';
+    delBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('确认删除此项？')) {
+            item.remove();
+        }
+    };
+
+    controls.appendChild(upBtn);
+    controls.appendChild(downBtn);
+    controls.appendChild(delBtn);
+    item.appendChild(controls);
+}
+
+function addCareerItem(container) {
+    const item = document.createElement('div');
+    item.className = 'career-item fade-in visible';
+    item.innerHTML = `
+        <div class="career-num">${String(container.querySelectorAll('.career-item').length + 1).padStart(2, '0')}</div>
+        <div class="career-dot"></div>
+        <div class="career-card">
+            <div class="career-header">
+                <div>
+                    <div class="career-company" contenteditable="true">公司 · 部门</div>
+                    <div class="career-role" contenteditable="true">职位名称</div>
+                </div>
+                <div class="career-date" contenteditable="true">起 — 止</div>
+            </div>
+            <div class="career-loc" contenteditable="true">城市 · 补充信息</div>
+            <p class="career-desc" contenteditable="true">简要描述这段经历的核心职责和成就。</p>
+            <ul class="career-highlights">
+                <li contenteditable="true">亮点描述一</li>
+                <li contenteditable="true">亮点描述二</li>
+            </ul>
+            <div class="career-skills">
+                <span contenteditable="true">技能1</span>
+                <span contenteditable="true">技能2</span>
+            </div>
+        </div>
+    `;
+    container.insertBefore(item, container.querySelector('.add-item-btn'));
+    addControlsToItem(item, { item: '.career-item' });
+}
+
+function addProjectCard(container) {
+    const card = document.createElement('div');
+    card.className = 'project-card fade-in visible';
+    card.innerHTML = `
+        <div class="project-year" contenteditable="true">2025</div>
+        <h3 class="project-title" contenteditable="true">新项目名称</h3>
+        <p class="project-desc" contenteditable="true">项目描述文字。</p>
+        <span class="project-badge" contenteditable="true">标签</span>
+    `;
+    container.insertBefore(card, container.querySelector('.add-item-btn'));
+    addControlsToItem(card, { item: '.project-card' });
+}
+
+function addEduCard(container) {
+    const card = document.createElement('div');
+    card.className = 'edu-card fade-in visible';
+    card.innerHTML = `
+        <div class="edu-icon" contenteditable="true">🎓</div>
+        <div class="edu-school" contenteditable="true">学校名称</div>
+        <div class="edu-major" contenteditable="true">专业</div>
+        <div class="edu-degree" contenteditable="true">学历</div>
+        <div class="edu-date" contenteditable="true">时间 · 城市</div>
+    `;
+    container.insertBefore(card, container.querySelector('.add-item-btn'));
+    addControlsToItem(card, { item: '.edu-card' });
+}
+
+function addContactCard(container) {
+    const card = document.createElement('div');
+    card.className = 'contact-card';
+    card.innerHTML = `
+        <div class="contact-icon" contenteditable="true">📱</div>
+        <div class="contact-label" contenteditable="true">标签</div>
+        <div class="contact-value" contenteditable="true">内容</div>
+    `;
+    container.insertBefore(card, container.querySelector('.add-item-btn'));
+    addControlsToItem(card, { item: '.contact-card' });
+}
+
+function addAboutStat(container) {
+    const stat = document.createElement('div');
+    stat.className = 'about-stat';
+    stat.innerHTML = `
+        <span class="num" contenteditable="true">0</span>
+        <span class="label" contenteditable="true">标签</span>
+    `;
+    container.insertBefore(stat, container.querySelector('.add-item-btn'));
+    addControlsToItem(stat, { item: '.about-stat' });
+}
+
+// 导出 HTML
+function exportHTML() {
+    // 先退出编辑模式（移除 contenteditable 等编辑态）
+    const wasEditing = editMode;
+    if (wasEditing) toggleEditMode();
+
+    // 克隆文档
+    const clone = document.documentElement.cloneNode(true);
+
+    // 保留编辑器代码（这样导出的文件仍可继续编辑）
+    // 只清理编辑产生的临时属性和控件
+
+    // 移除编辑产生的属性和类
+    clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+    clone.querySelectorAll('.section-hidden').forEach(el => el.classList.remove('section-hidden'));
+    clone.querySelectorAll('.section-toggle-btn').forEach(el => el.remove());
+    clone.querySelectorAll('.item-controls').forEach(el => el.remove());
+    clone.querySelectorAll('.add-item-btn').forEach(el => el.remove());
+    clone.querySelectorAll('.fade-in').forEach(el => { el.classList.add('visible'); });
+
+    // 清理内联 style（display none 等编辑操作产生的）
+    clone.querySelectorAll('section[style*="display: none"], section[style*="display:none"]').forEach(el => {
+        el.style.display = '';
+        if (!el.style.cssText) el.removeAttribute('style');
+    });
+    clone.querySelectorAll('footer[style*="display: none"], footer[style*="display:none"]').forEach(el => {
+        el.style.display = '';
+        if (!el.style.cssText) el.removeAttribute('style');
+    });
+
+    // 清理 CSS 变量覆盖（如果用户改了主题，保留在 style 中）
+    // 保留 -- 开头的内联样式（主题色）
+
+    const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n' + clone.innerHTML + '\n</html>';
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'index.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+
+    // 恢复编辑模式
+    if (wasEditing) toggleEditMode();
+
+    alert('HTML 文件已下载！\n\n下一步：\n1. 用下载的 index.html 替换项目中的同名文件\n2. 在终端运行 ./deploy.sh 一键上线');
+}
+
+// 初始化编辑器
+initEditor();
+</script>
+
+</body>
+</html>
